@@ -3,6 +3,7 @@
 #include <cstring>
 #include <fstream>
 #include <algorithm>
+#include <iomanip>
 #include "Controller/Controller.h"
 
 struct Cedula
@@ -17,49 +18,164 @@ struct Codigo
 
 Cedula auxiliar;
 std::string cedula;
+char taquilla1[4] = "";
+char taquilla2[4] = "";
+char taquilla3[4] = "";
 
-// ARCHIVOS
+// GENERAL
+void taquilla(queues::Nodo *&frente, queues::Nodo *&final, int a);
+void eliminarCodigo();
 
 // PILAS
+void incisoA(queues::Nodo *&frente, queues::Nodo *&final);
+bool buscarCodigo(const char *valorBuscado);
 bool validarCedula();
-void incisoA();
+
+// COLAS
+void revisarCola(queues::Nodo *&frente, queues::Nodo *&final);
+void colas(queues::Nodo *&frente, queues::Nodo *&final, char *codigo);
 
 int main()
 {
-    int c;
+    queues::Nodo *frente = nullptr;
+    queues::Nodo *final = nullptr;
+    queues auxiliar;
+
+    // LEEMOS CODIGOS (EN CASO DE HABERLOS), QUE ESTEN EN COLA DESDE ANTES DE INICIAR LA EJECUCION DEL PROGRAMA
+    revisarCola(frente, final);
+
+    int c, cuenta, width = 32;
     bool agregarPila = false;
     do
     {
         system("cls");
-        std::cout << "A: para ingresar por teclado la cedula, generar el codigo y agregar a la cola\n";
-        std::cout << "1: Para llamar al siguiente de la cola virtual en taquilla 1\n";
-        std::cout << "2: Para llamar al siguiente de la cola virtual en taquilla 2\n";
-        std::cout << "3: Para llamar al siguiente de la cola virtual en taquilla 3\n";
-        std::cout << "F: Finalizar la ejecucion del programa\n ";
-        std::cout << "OPCION: ";
+        std::cout << std::setw(50) << "";
+        std::cout << "BANCO DEL TESORO\n\n";
+        std::cout << "A: para ingresar por teclado la cedula, generar el codigo y agregar a la cola.\n";
+        std::cout << "1: Para llamar al siguiente de la cola virtual en taquilla 1.\n";
+        std::cout << "2: Para llamar al siguiente de la cola virtual en taquilla 2.\n";
+        std::cout << "3: Para llamar al siguiente de la cola virtual en taquilla 3.\n";
+        std::cout << "F: Finalizar la ejecucion del programa.\n\n";
+
+        // IMPRIMIMOS LA INFORMACIÓN DE LAS COLAS Y LOS CODIGOS QUE SE ENCUENTRAN EN CADA TAQUILLA
+        cuenta = 1;
+        std::cout << std::left << std::setw(width) << "COLA"
+                  << std::setw(width) << "TAQUILLA 1"
+                  << std::setw(width) << "TAQUILLA 2"
+                  << std::setw(width) << "TAQUILLA 3"
+                  << std::endl;
+        if (!auxiliar.isEmpty(frente))
+        {
+            auxiliar.printAll(frente, cuenta);
+        }
+        std::cout << "\n\nTAQUILLA 1: " << taquilla1 << "\n";
+        std::cout << "\n\nTAQUILLA 2: " << taquilla2 << "\n";
+        std::cout << "\n\nTAQUILLA 3: " << taquilla3 << "\n";
+
+        std::cout << "\n\nOPCION: ";
         c = toupper(getchar());
         getchar();
 
         if (c == 'A')
         {
-            incisoA();
+            incisoA(frente, final);
         }
         else if (c == '1')
         {
-            std::cout << "Presionaste 1\n";
-            system("pause");
+            taquilla(frente, final, 1);
         }
         else if (c == '2')
         {
-            std::cout << "Presionaste 2\n";
-            system("pause");
+            taquilla(frente, final, 2);
         }
         else if (c == '3')
         {
-            std::cout << "Presionaste 3\n";
-            system("pause");
+            taquilla(frente, final, 3);
         }
     } while (c != 'F');
+
+    system("cls");
+    std::cout << "\nGracias por preferirnos.\n\n";
+}
+
+void incisoA(queues::Nodo *&frente, queues::Nodo *&final)
+{
+    stacks::Nodo *cima = nullptr;
+    stacks pila;
+    char *auxCodigo;
+    bool encontrado = false, invertido = false;
+
+    if (validarCedula())
+    {
+        for (char c : cedula)
+        {
+            pila.push(c, cima);
+        }
+    }
+    do
+    {
+        auxCodigo = pila.generarCodigo(cima);
+        encontrado = buscarCodigo(auxCodigo);
+        // std::cout << auxCodigo << "\n\n";
+
+        if (encontrado && !pila.isEmpty(cima))
+        {
+            // std::cout << "ANADE DE VUELTA LOS ELEMENTOS\n";
+            pila.push(auxCodigo[0], cima);
+            pila.push(auxCodigo[1], cima);
+        }
+
+        if (encontrado && pila.isEmpty(cima))
+        {
+            // std::cout << "ALTO\n";
+            invertido = true;
+            for (int i = cedula.size() - 1; i >= 0; i--)
+            {
+                pila.push(cedula[i], cima);
+            }
+        }
+
+    } while (encontrado);
+
+    Codigo codigoAux;
+    std::strcpy(codigoAux.codigo, auxCodigo);
+    std::ofstream file("../Database/Codigos.bin", std::ios::app | std::ios::binary);
+    if (!file)
+    {
+        std::cerr << "No se pudo abrir el archivo.\n";
+    }
+    else
+    {
+        file.write(reinterpret_cast<char *>(&codigoAux), sizeof(Codigo));
+        file.close();
+    }
+    colas(frente, final, auxCodigo);
+}
+
+bool validarCedula()
+{
+    bool flag = true;
+    std::cout << "CEDULA: ";
+    std::cin >> cedula;
+    for (char c : cedula)
+    {
+        if (!isdigit(c))
+        {
+            flag = false;
+            break;
+        }
+    }
+    strcpy(auxiliar.cedula, cedula.c_str());
+    // std::cout << auxiliar.cedula << "\n\n";
+    // system("pause");
+    if (!flag)
+    {
+        std::cout << "Entrada no valida, por favor intentelo nuevamente.\n\n";
+        system("pause");
+    }
+
+    std::cin.ignore();
+    return flag;
 }
 
 bool buscarCodigo(const char *valorBuscado)
@@ -86,95 +202,98 @@ bool buscarCodigo(const char *valorBuscado)
     return false;
 }
 
-void incisoA()
+void colas(queues::Nodo *&frente, queues::Nodo *&final, char *codigo)
 {
-    stacks::Nodo *cima = nullptr;
-    stacks pila;
-    char *auxCodigo;
-    bool encontrado = false, invertido = false;
-
-    if (validarCedula())
-    {
-        for (char c : cedula)
-        {
-            pila.push(c, cima);
-        }
-    }
-    do
-    {
-        auxCodigo = pila.generarCodigo(cima);
-        encontrado = buscarCodigo(auxCodigo);
-        std::cout << auxCodigo << "\n\n";
-
-        if (encontrado && !pila.isEmpty(cima))
-        {
-            std::cout << "ANADE DE VUELTA LOS ELEMENTOS\n";
-            pila.push(auxCodigo[0], cima);
-            pila.push(auxCodigo[1], cima);
-        }
-
-        if (encontrado && pila.isEmpty(cima))
-        {
-            std::cout << "ALTO\n";
-            for (int i = cedula.size() - 1; i >= 0; i--)
-            {
-                pila.push(cedula[i], cima);
-            }
-            system("pause");
-        }
-
-    } while (encontrado);
-
-    Codigo codigoAux;
-    std::strcpy(codigoAux.codigo, auxCodigo);
-    std::ofstream file("../Database/Codigos.bin", std::ios::app | std::ios::binary);
-    if (!file)
-    {
-        std::cerr << "No se pudo abrir el archivo.\n";
-    }
-    else
-    {
-        file.write(reinterpret_cast<char *>(&codigoAux), sizeof(Codigo));
-        file.close();
-    }
-    std::ifstream file2("../Database/Codigos.bin", std::ios::binary);
-    if (!file2)
-    {
-        std::cerr << "No se pudo abrir el archivo.\n";
-    }
-    else
-    {
-        while (file2.read(reinterpret_cast<char *>(&codigoAux), sizeof(Codigo)))
-        {
-            std::cout << "Codigo: " << codigoAux.codigo << "\n";
-        }
-        file2.close();
-    }
-    system("pause");
+    queues cola;
+    cola.push(frente, final, codigo);
 }
 
-bool validarCedula()
+void revisarCola(queues::Nodo *&frente, queues::Nodo *&final)
 {
-    bool flag = true;
-    std::cout << "CEDULA: ";
-    std::cin >> cedula;
-    for (char c : cedula)
+    Codigo auxiliarPila;
+    std::ifstream pila("../Database/Codigos.bin", std::ios::binary);
+    if (!pila)
     {
-        if (!isdigit(c))
+        std::cerr << "No se pudo abrir el archivo.\n";
+    }
+    else
+    {
+        while (pila.read(reinterpret_cast<char *>(&auxiliarPila), sizeof(Codigo)))
         {
-            flag = false;
-            break;
+            colas(frente, final, auxiliarPila.codigo);
+        }
+        pila.close();
+    }
+}
+
+void taquilla(queues::Nodo *&frente, queues::Nodo *&final, int a)
+{
+    queues cola;
+
+    if (!cola.isEmpty(frente))
+    {
+        if (a == 1)
+        {
+            cola.pop(frente, final, taquilla1);
+            eliminarCodigo();
+        }
+        else if (a == 2)
+        {
+            cola.pop(frente, final, taquilla2);
+            eliminarCodigo();
+        }
+        else if (a == 3)
+        {
+            cola.pop(frente, final, taquilla3);
+            eliminarCodigo();
         }
     }
-    strcpy(auxiliar.cedula, cedula.c_str());
-    // std::cout << auxiliar.cedula << "\n\n";
-    system("pause");
-    if (!flag)
+    else
     {
-        std::cout << "Entrada no valida, por favor intentelo nuevamente.\n\n";
+        std::cout << ("LA COLA ESTA VACIA.");
         system("pause");
     }
+}
 
-    std::cin.ignore();
-    return flag;
+void eliminarCodigo()
+{
+    std::ifstream inFile;
+    std::ofstream outFile;
+    const char *tempFilename = "temp.bin";
+
+    inFile.open("../Database/Codigos.bin", std::ios::binary);
+    if (!inFile)
+    {
+        std::cout << "No se pudo abrir el archivo original.\n";
+        return;
+    }
+
+    outFile.open(tempFilename, std::ios::binary);
+    if (!outFile)
+    {
+        std::cout << "No se pudo abrir el archivo temporal.\n";
+        return;
+    }
+
+    inFile.seekg(sizeof(Codigo), std::ios::beg);
+
+    Codigo nodo;
+    while (inFile.read(reinterpret_cast<char *>(&nodo), sizeof(Codigo)))
+    {
+        outFile.write(reinterpret_cast<char *>(&nodo), sizeof(Codigo));
+    }
+
+    inFile.close();
+    outFile.close();
+
+    if (remove("../Database/Codigos.bin") != 0)
+    {
+        std::cout << "Error al eliminar el archivo original.\n";
+        return;
+    }
+
+    if (rename(tempFilename, "../Database/Codigos.bin") != 0)
+    {
+        std::cout << "Error al renombrar el archivo temporal.\n";
+    }
 }

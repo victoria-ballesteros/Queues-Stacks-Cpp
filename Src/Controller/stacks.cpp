@@ -7,8 +7,6 @@ void stacks::push(char caracter, Nodo *&cima)
     nuevo_nodo->caracter = caracter;
     nuevo_nodo->siguiente = cima;
     cima = nuevo_nodo;
-    // std::cout << caracter << " agregado.\n";
-    // system("pause");
 }
 
 char *stacks::generarCodigo(Nodo *&cima)
@@ -27,8 +25,7 @@ char *stacks::generarCodigo(Nodo *&cima)
     for (int i = 0; i < MAX; i++)
     {
         code[contador] = pop(cima);
-        std::cout << code[contador] << " Eliminado.\n";
-        // system("pause");
+        // std::cout << code[contador] << " Eliminado.\n";
         contador++;
     }
     contador = 0;
@@ -39,7 +36,7 @@ char *stacks::generarCodigo(Nodo *&cima)
     }
     reverseCode[contador] = '\0';
     delete[] code;
-    std::cout << "Cima: " << top(cima) << "\n";
+    // std::cout << "Cima: " << top(cima) << "\n";
     return reverseCode;
 }
 
